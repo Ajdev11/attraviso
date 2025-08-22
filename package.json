@@ -13,10 +13,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "concurrently \"npm:tw:watch\" \"react-scripts start\"",
     "build": "react-scripts build",
-    "tw:build": "tailwindcss -i ./src/index.css -o ./src/index.css",
-    "tw:watch": "tailwindcss -i ./src/index.css -o ./src/index.css --watch",
+    "tw:build": "tailwindcss -i ./src/styles/tailwind.css -o ./src/tailwind.css",
+    "tw:watch": "tailwindcss -i ./src/styles/tailwind.css -o ./src/tailwind.css --watch",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -39,6 +39,7 @@
     ]
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.12",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.0",
     "postcss": "^8.5.6",
