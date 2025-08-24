@@ -14,6 +14,7 @@ Describe the problem you’re solving and why it matters in 2–3 sentences. Exa
 - React 19 (Create React App 5)
 - Express backend proxy for Overpass API
 - Tailwind CSS 4 (CLI in watch mode)
+- Leaflet map with React bindings
 - ESLint via `react-app` config
 
 ## Getting started
@@ -68,6 +69,12 @@ This launches:
 - Tailwind CLI in watch mode
 - Express backend on http://localhost:5000
 - React dev server on http://localhost:3000 (proxied to backend via `proxy`)
+
+### Map & Geolocation tips
+- Geolocation requires HTTPS on real devices (or `localhost`). To test on phone:
+  - On Windows PowerShell: `set HTTPS=true; npm start`
+  - Ensure the API is reachable from your phone (same LAN) or deploy both behind one HTTPS domain.
+- Toggle between List/Map in the header. Dark mode is supported.
 
 ### Environment
 - Optional: set `CORS_ORIGINS` env var (comma-separated) to restrict origins for the backend.
