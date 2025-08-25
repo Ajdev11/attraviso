@@ -46,7 +46,6 @@ export default function AttractionsList({ items, isLoading, error }) {
         <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-800">
           {item.imageUrl && (
             <div className="relative h-40 w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
             </div>
           )}
