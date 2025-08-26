@@ -1,9 +1,15 @@
 import React from 'react';
 
-export default function CardImage({ src, alt }) {
+export default function CardImage({ src, alt, fallbackSrc }) {
+  const apiBase = React.useMemo(() => (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : ''), []);
+  const baseSrc = React.useMemo(() => (src?.startsWith('/') ? `${apiBase}${src}` : src), [apiBase, src]);
   const [loaded, setLoaded] = React.useState(false);
-  const tinySrc = `${src}${src.includes('?') ? '&' : '?'}w=24&q=20`;
-  const mainSrc = `${src}${src.includes('?') ? '&' : '?'}w=640&q=78`;
+  const [useFallback, setUseFallback] = React.useState(false);
+
+  const effectiveSrc = useFallback && fallbackSrc ? (fallbackSrc.startsWith('/') ? `${apiBase}${fallbackSrc}` : fallbackSrc) : baseSrc;
+  const tinySrc = `${effectiveSrc}${effectiveSrc?.includes('?') ? '&' : '?'}w=24&q=20`;
+  const mainSrc = `${effectiveSrc}${effectiveSrc?.includes('?') ? '&' : '?'}w=640&q=78`;
+
   return (
     <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
       <img
@@ -11,7 +17,7 @@ export default function CardImage({ src, alt }) {
         alt=""
         aria-hidden
         className="absolute inset-0 h-full w-full transform-gpu object-cover blur-lg"
-        onLoad={() => {}}
+        onError={() => setUseFallback(true)}
       />
       <img
         src={mainSrc}
@@ -19,6 +25,7 @@ export default function CardImage({ src, alt }) {
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
         onLoad={() => setLoaded(true)}
+        onError={() => setUseFallback(true)}
       />
     </div>
   );

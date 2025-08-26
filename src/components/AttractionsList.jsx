@@ -1,5 +1,6 @@
 import React from 'react';
 import CardImage from './CardImage';
+import { getFallbackGalleryForCategory } from './fallbackImages';
 
 function formatDistance(meters) {
   if (meters == null) return '';
@@ -45,9 +46,13 @@ export default function AttractionsList({ items, isLoading, error }) {
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => (
         <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-800">
-          {item.imageUrl && (
-            <CardImage src={`/api/image?url=${encodeURIComponent(item.imageUrl)}`} alt={item.name} />
-          )}
+          {(() => {
+            const fallback = `/api/image?url=${encodeURIComponent(getFallbackGalleryForCategory(item.category)[0])}`;
+            if (item.imageUrl) {
+              return <CardImage src={`/api/image?url=${encodeURIComponent(item.imageUrl)}`} fallbackSrc={fallback} alt={item.name} />;
+            }
+            return <CardImage src={fallback} alt={item.name} />;
+          })()}
           <div className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
