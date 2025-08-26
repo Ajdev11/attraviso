@@ -1,4 +1,5 @@
 import React from 'react';
+import CardImage from './CardImage';
 
 function formatDistance(meters) {
   if (meters == null) return '';
@@ -45,9 +46,7 @@ export default function AttractionsList({ items, isLoading, error }) {
       {items.map((item) => (
         <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-800">
           {item.imageUrl && (
-            <div className="relative h-40 w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
-              <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
-            </div>
+            <CardImage src={`/api/image?url=${encodeURIComponent(item.imageUrl)}`} alt={item.name} />
           )}
           <div className="p-4">
           <div className="flex items-start justify-between gap-3">

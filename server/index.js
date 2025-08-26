@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const sharp = require('sharp');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -198,10 +199,22 @@ async function fetchWebsiteOgImage(websiteUrl) {
     if (cached) return cached;
     const { data: html } = await axios.get(websiteUrl, { timeout: 10000, headers: { 'User-Agent': 'AttravisoBot/1.0 (+https://example.com)' } });
     const $ = cheerio.load(html);
-    const og = $('meta[property="og:image"]').attr('content')
-      || $('meta[name="twitter:image"]').attr('content')
-      || $('meta[name="og:image"]').attr('content');
-    const abs = toAbsoluteUrl(websiteUrl, og);
+    const candidates = [
+      $('meta[property="og:image:secure_url"]').attr('content'),
+      $('meta[property="og:image:url"]').attr('content'),
+      $('meta[property="og:image"]').attr('content'),
+      $('meta[name="og:image"]').attr('content'),
+      $('meta[name="twitter:image"]').attr('content'),
+      $('meta[name="twitter:image:src"]').attr('content'),
+      $('link[rel="image_src"]').attr('href'),
+    ].filter(Boolean);
+    let abs = null;
+    for (const c of candidates) {
+      if (!c || typeof c !== 'string') continue;
+      if (c.toLowerCase().includes('undefined')) continue;
+      const u = toAbsoluteUrl(websiteUrl, c);
+      if (u) { abs = u; break; }
+    }
     if (abs) setCachedImage(key, abs);
     return abs || null;
   } catch (_e) {
@@ -223,6 +236,17 @@ async function enrichItemWithImage(item) {
   if (item?.tags?.website) {
     const url = await fetchWebsiteOgImage(item.tags.website);
     if (url) { item.imageUrl = url; return item; }
+    // fallback: try common hero paths
+    const guesses = ['/og-image.jpg', '/og-image.png', '/images/og.jpg', '/images/og.png', '/assets/og.jpg', '/assets/og.png'];
+    for (const g of guesses) {
+      const u = toAbsoluteUrl(item.tags.website, g);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const head = await axios.head(u, { timeout: 5000 });
+        const ctype = head.headers['content-type'] || '';
+        if (head.status < 400 && ctype.startsWith('image/')) { item.imageUrl = u; return item; }
+      } catch (_e) {}
+    }
   }
   return item;
 }
@@ -270,6 +294,42 @@ app.get('/api/attractions', async (req, res) => {
   } catch (error) {
     const status = error.response?.status || 500;
     res.status(status).json({ error: 'Failed to fetch attractions', details: error.message });
+  }
+});
+
+// Image proxy to avoid hotlink restrictions and mixed header issues
+app.get('/api/image', async (req, res) => {
+  const { url, w, q } = req.query;
+  try {
+    if (!url) return res.status(400).send('Missing url');
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return res.status(400).send('Invalid protocol');
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'AttravisoImageProxy/1.0',
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        Referer: parsed.origin,
+      },
+      validateStatus: (s) => s < 400,
+    });
+    const input = Buffer.from(response.data);
+    const width = Math.max(1, Math.min(parseInt(w || '0', 10) || 0, 2000)) || null;
+    const quality = Math.max(1, Math.min(parseInt(q || '75', 10), 100));
+    if (width) {
+      const webp = await sharp(input).resize({ width, withoutEnlargement: true }).webp({ quality }).toBuffer();
+      res.set('Content-Type', 'image/webp');
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.send(webp);
+    } else {
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+      res.set('Content-Type', contentType);
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.send(input);
+    }
+  } catch (e) {
+    res.status(502).send('Failed to fetch image');
   }
 });
 
