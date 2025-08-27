@@ -131,12 +131,12 @@ function App() {
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
         <div className="mx-auto max-w-6xl px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 md:justify-between">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded bg-gradient-to-br from-blue-500 to-indigo-600"></div>
-              <h1 className="text-lg font-semibold tracking-tight">Attraviso</h1>
+              <h1 className="text-lg font-semibold tracking-tight text-center md:text-left">Attraviso</h1>
             </div>
-            <div className="flex flex-1 items-center justify-end gap-3">
+            <div className="flex w-full flex-1 items-center justify-center gap-3 md:w-auto md:justify-end">
               <div className="hidden items-center gap-2 md:flex">
                 <label className="text-sm text-gray-600 dark:text-gray-300">Radius</label>
                 <input
@@ -194,7 +194,7 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="mt-3 flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
             <input
               type="text"
               placeholder="Search attractions…"
@@ -202,7 +202,7 @@ function App() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
             />
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
               {['all','tourism','historic','other'].map((t) => (
                 <button
                   key={t}
@@ -233,18 +233,18 @@ function App() {
 
       <main className="mx-auto max-w-6xl px-4 py-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         {!coords && !permissionError && (
-          <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-center text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
             Please allow location access to find attractions near you.
           </div>
         )}
         {permissionError && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-center text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
             {permissionError}
           </div>
         )}
 
         {coords && (
-          <div className="mb-4 text-sm text-gray-600">
+          <div className="mb-4 text-center text-sm text-gray-600 md:text-left">
             Your location: lat {coords.lat.toFixed(5)}, lon {coords.lon.toFixed(5)}
           </div>
         )}
