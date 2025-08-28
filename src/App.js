@@ -22,6 +22,12 @@ function App() {
   const [mapBounds, setMapBounds] = React.useState(null);
   const [filterToMap, setFilterToMap] = React.useState(false);
 
+  // UI style helpers (no logic change)
+  const toolbarButtonClasses =
+    'rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800';
+  const primaryButtonClasses =
+    'rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700';
+
   React.useEffect(() => {
     const root = document.documentElement;
     if (darkMode) {
@@ -131,12 +137,12 @@ function App() {
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
         <div className="mx-auto max-w-6xl px-4 py-3">
-          <div className="flex flex-wrap items-center justify-center gap-3 md:justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded bg-gradient-to-br from-blue-500 to-indigo-600"></div>
-              <h1 className="text-lg font-semibold tracking-tight text-center md:text-left">Attraviso</h1>
+              <h1 className="text-lg font-semibold tracking-tight">Attraviso</h1>
             </div>
-            <div className="flex w-full flex-1 items-center justify-center gap-3 md:w-auto md:justify-end">
+            <div className="flex w-full flex-1 items-center justify-between gap-3 md:w-auto md:justify-end">
               <div className="hidden items-center gap-2 md:flex">
                 <label className="text-sm text-gray-600 dark:text-gray-300">Radius</label>
                 <input
@@ -151,26 +157,30 @@ function App() {
                 <span className="w-10 text-right text-sm text-gray-700 dark:text-gray-300">{Math.round(radius/1000)}k</span>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  className={`rounded-md border px-3 py-1.5 text-sm ${view==='list' ? 'bg-gray-100 dark:bg-gray-800' : 'border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'}`}
-                  onClick={() => setView('list')}
-                >
-                  List
-                </button>
-                <button
-                  className={`rounded-md border px-3 py-1.5 text-sm ${view==='map' ? 'bg-gray-100 dark:bg-gray-800' : 'border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'}`}
-                  onClick={() => setView('map')}
-                >
-                  Map
-                </button>
+                <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-gray-700">
+                  <button
+                    className={`px-3 py-1.5 text-sm ${view==='list' ? 'bg-gray-100 dark:bg-gray-800 font-medium' : 'hover:bg-gray-50'}`}
+                    onClick={() => setView('list')}
+                    title="List view"
+                  >
+                    List
+                  </button>
+                  <button
+                    className={`border-l border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700 ${view==='map' ? 'bg-gray-100 dark:bg-gray-800 font-medium' : 'hover:bg-gray-50'}`}
+                    onClick={() => setView('map')}
+                    title="Map view"
+                  >
+                    Map
+                  </button>
+                </div>
                 {view === 'map' && (
-                  <label className="ml-1 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <label className="ml-1 hidden cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-gray-700 md:flex dark:text-gray-300">
                     <input type="checkbox" className="accent-blue-600" checked={filterToMap} onChange={(e) => setFilterToMap(e.target.checked)} />
-                    Filter to map area
+                    Filter map area
                   </label>
                 )}
                 <button
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                  className={toolbarButtonClasses}
                   onClick={locateMe}
                   title="Locate me"
                 >
@@ -178,14 +188,14 @@ function App() {
                 </button>
                 {coords && (
                   <button
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700"
+                    className={primaryButtonClasses}
                     onClick={() => fetchAttractions(coords.lat, coords.lon, radius)}
                   >
                     ↻ Refresh
                   </button>
                 )}
                 <button
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                  className={toolbarButtonClasses}
                   onClick={() => setDarkMode((v) => !v)}
                   title="Toggle dark mode"
                 >
