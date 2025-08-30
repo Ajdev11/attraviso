@@ -16,13 +16,13 @@ export default function CardImage({ src, alt, fallbackSrc }) {
         src={tinySrc}
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full transform-gpu object-cover blur-lg"
+        className="absolute inset-0 h-full w-full transform-gpu object-cover object-center blur-lg"
         onError={() => setUseFallback(true)}
       />
       <img
         src={mainSrc}
         alt={alt}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         loading="lazy"
         onLoad={() => setLoaded(true)}
         onError={() => setUseFallback(true)}
