@@ -19,7 +19,7 @@ function SkeletonCard() {
   );
 }
 
-export default function AttractionsList({ items, isLoading, error }) {
+export default function AttractionsList({ items, isLoading, error, darkMode }) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-2" style={{ columnGap: '3rem', rowGap: '2.5rem' }}>
@@ -42,10 +42,15 @@ export default function AttractionsList({ items, isLoading, error }) {
     );
   }
 
+  const cardStyle = darkMode
+    ? { backgroundColor: '#0b1220', borderColor: '#1e293b', color: '#f8fafc' }
+    : undefined;
+  const badgeStyle = darkMode ? { backgroundColor: '#0f172a', color: '#e2e8f0' } : undefined;
+
   return (
     <ul className="grid grid-cols-2" style={{ columnGap: '3rem', rowGap: '2.5rem' }}>
       {items.map((item) => (
-        <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+        <li key={item.id} className="overflow-hidden rounded-lg border shadow-sm transition hover:shadow-md" style={cardStyle}>
           {(() => {
             const fallback = `/api/image?url=${encodeURIComponent(getFallbackGalleryForCategory(item.category)[0])}`;
             if (item.imageUrl) {
@@ -53,7 +58,7 @@ export default function AttractionsList({ items, isLoading, error }) {
             }
             return <CardImage src={fallback} alt={item.name} />;
           })()}
-          <div className="p-4 text-gray-900 dark:text-slate-100">
+          <div className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-base font-semibold text-gray-900 dark:text-slate-50">
@@ -62,7 +67,7 @@ export default function AttractionsList({ items, isLoading, error }) {
               <p className="text-xs text-gray-500 dark:text-slate-300">{item.category}</p>
             </div>
             {typeof item.distanceMeters === 'number' && (
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-slate-800 dark:text-slate-200">
+              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700" style={badgeStyle}>
                 {formatDistance(item.distanceMeters)}
               </span>
             )}

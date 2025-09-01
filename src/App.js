@@ -23,8 +23,9 @@ function App() {
   const [filterToMap, setFilterToMap] = React.useState(false);
 
   // UI style helpers (no logic change)
-  const toolbarButtonClasses =
-    'rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800';
+  const toolbarButtonClasses = `${'rounded-md px-3 py-1.5 text-sm font-medium'} ${
+    darkMode ? 'border border-gray-700 hover:bg-gray-800' : 'border border-gray-300 hover:bg-gray-50'
+  }`;
   const primaryButtonClasses =
     'rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700';
 
@@ -133,9 +134,16 @@ function App() {
     return out;
   }, [items, search, typeFilter, filterToMap, mapBounds]);
 
+  const themeRootStyle = darkMode
+    ? { backgroundColor: '#0b1220', color: '#f8fafc' }
+    : { backgroundColor: '#fafafa', color: '#111827' };
+  const themeHeaderStyle = darkMode
+    ? { backgroundColor: 'rgba(2,6,23,0.8)', borderBottom: '1px solid #1e293b', backdropFilter: 'blur(8px)' }
+    : { backgroundColor: 'rgba(255,255,255,0.8)', borderBottom: '1px solid #e5e7eb', backdropFilter: 'blur(8px)' };
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-slate-950 dark:text-slate-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+    <div className="min-h-screen" style={themeRootStyle}>
+      <header className="sticky top-0 z-10" style={themeHeaderStyle}>
         <div className="mx-auto max-w-6xl px-6 sm:px-8 md:px-10 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -157,16 +165,16 @@ function App() {
                 <span className="w-10 text-right text-sm text-gray-700 dark:text-gray-300">{Math.round(radius/1000)}k</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="inline-flex overflow-hidden rounded-md border border-gray-300 dark:border-gray-700">
+                <div className={`inline-flex overflow-hidden rounded-md border ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
                   <button
-                    className={`px-3 py-1.5 text-sm ${view==='list' ? 'bg-gray-100 dark:bg-gray-800 font-medium' : 'hover:bg-gray-50'}`}
+                    className={`px-3 py-1.5 text-sm ${view==='list' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
                     onClick={() => setView('list')}
                     title="List view"
                   >
                     List
                   </button>
                   <button
-                    className={`border-l border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700 ${view==='map' ? 'bg-gray-100 dark:bg-gray-800 font-medium' : 'hover:bg-gray-50'}`}
+                    className={`border-l px-3 py-1.5 text-sm ${darkMode ? 'border-gray-700' : 'border-gray-300'} ${view==='map' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
                     onClick={() => setView('map')}
                     title="Map view"
                   >
@@ -260,7 +268,7 @@ function App() {
         )}
 
         {view === 'list' ? (
-          <AttractionsList items={filteredItems} isLoading={loading} error={error} />
+          <AttractionsList darkMode={darkMode} items={filteredItems} isLoading={loading} error={error} />
         ) : (
           <MapView center={coords} items={filteredItems} radius={radius} onBoundsChange={(b) => setMapBounds(b)} />
         )}

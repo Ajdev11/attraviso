@@ -54,9 +54,6 @@
 .w-full {
   width: 100%;
 }
-.flex-1 {
-  flex: 1;
-}
 .transform-gpu {
   transform: translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
 }
@@ -102,10 +99,6 @@
 .border {
   border-style: var(--tw-border-style);
   border-width: 1px;
-}
-.border-b {
-  border-bottom-style: var(--tw-border-style);
-  border-bottom-width: 1px;
 }
 .border-l {
   border-left-style: var(--tw-border-style);
