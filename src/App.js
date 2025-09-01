@@ -136,7 +136,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
-        <div className="mx-auto max-w-6xl px-5 py-3">
+        <div className="mx-auto max-w-6xl px-6 sm:px-8 md:px-10 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded bg-gradient-to-br from-blue-500 to-indigo-600"></div>
@@ -241,7 +241,7 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <main className="mx-auto max-w-6xl px-6 sm:px-8 md:px-10 py-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
         {!coords && !permissionError && (
           <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-center text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
             Please allow location access to find attractions near you.
@@ -266,7 +266,7 @@ function App() {
         )}
       </main>
 
-      <footer className="mx-auto max-w-6xl px-5 py-8 text-center text-xs text-gray-500 dark:text-gray-400">
+      <footer className="mx-auto max-w-6xl px-6 sm:px-8 md:px-10 py-8 text-center text-xs text-gray-500 dark:text-gray-400">
         Data from OpenStreetMap (Overpass API)
       </footer>
     </div>
