@@ -22,7 +22,7 @@ function SkeletonCard() {
 export default function AttractionsList({ items, isLoading, error }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-6 md:gap-8">
+      <div className="grid grid-cols-2" style={{ columnGap: '3rem', rowGap: '2.5rem' }}>
         {Array.from({ length: 9 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -43,9 +43,9 @@ export default function AttractionsList({ items, isLoading, error }) {
   }
 
   return (
-    <ul className="grid grid-cols-2 gap-6 md:gap-8">
+    <ul className="grid grid-cols-2" style={{ columnGap: '3rem', rowGap: '2.5rem' }}>
       {items.map((item) => (
-        <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-800">
+        <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
           {(() => {
             const fallback = `/api/image?url=${encodeURIComponent(getFallbackGalleryForCategory(item.category)[0])}`;
             if (item.imageUrl) {
@@ -53,30 +53,30 @@ export default function AttractionsList({ items, isLoading, error }) {
             }
             return <CardImage src={fallback} alt={item.name} />;
           })()}
-          <div className="p-4">
+          <div className="p-4 text-gray-900 dark:text-slate-100">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-slate-50">
                 {item.name}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{item.category}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-300">{item.category}</p>
             </div>
             {typeof item.distanceMeters === 'number' && (
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-slate-800 dark:text-slate-200">
                 {formatDistance(item.distanceMeters)}
               </span>
             )}
           </div>
-          <div className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+          <div className="mt-3 text-sm text-gray-600 dark:text-slate-200">
             <div>Lat: {item.latitude?.toFixed?.(5)} | Lon: {item.longitude?.toFixed?.(5)}</div>
             {item.tags?.website && (
-              <a className="text-blue-600 hover:underline dark:text-blue-400" href={item.tags.website} target="_blank" rel="noreferrer">
+              <a className="text-blue-600 hover:underline dark:text-blue-300" href={item.tags.website} target="_blank" rel="noreferrer">
                 Website
               </a>
             )}
             {item.tags?.wikipedia && (
               <div className="mt-1">
-                <span className="text-gray-500 dark:text-gray-400">Wikipedia: </span>
+                <span className="text-gray-500 dark:text-slate-300">Wikipedia: </span>
                 <span className="break-words">{item.tags.wikipedia}</span>
               </div>
             )}
@@ -84,7 +84,7 @@ export default function AttractionsList({ items, isLoading, error }) {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {item.latitude && item.longitude && (
               <a
-                className="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700"
+                className="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800"
                 href={`https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`}
                 target="_blank"
                 rel="noreferrer"

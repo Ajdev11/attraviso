@@ -1,3 +1,5 @@
+@source "./public/index.html";
+@source "./src/**/*.{js,jsx,ts,tsx}";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
