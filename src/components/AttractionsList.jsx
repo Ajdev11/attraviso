@@ -22,7 +22,7 @@ function SkeletonCard() {
 export default function AttractionsList({ items, isLoading, error }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4">
         {Array.from({ length: 9 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -43,7 +43,7 @@ export default function AttractionsList({ items, isLoading, error }) {
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-2 gap-4">
       {items.map((item) => (
         <li key={item.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-800">
           {(() => {
