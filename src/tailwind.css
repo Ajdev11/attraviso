@@ -15,6 +15,9 @@
 .mx-auto {
   margin-inline: auto;
 }
+.ml-auto {
+  margin-left: auto;
+}
 .flex {
   display: flex;
 }
@@ -86,6 +89,9 @@
 }
 .justify-center {
   justify-content: center;
+}
+.justify-end {
+  justify-content: flex-end;
 }
 .overflow-hidden {
   overflow: hidden;

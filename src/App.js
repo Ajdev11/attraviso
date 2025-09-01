@@ -142,7 +142,7 @@ function App() {
               <div className="h-8 w-8 rounded bg-gradient-to-br from-blue-500 to-indigo-600"></div>
               <h1 className="text-lg font-semibold tracking-tight">Attraviso</h1>
             </div>
-            <div className="flex w-full flex-1 items-center justify-between gap-3 md:w-auto md:justify-end">
+            <div className="ml-auto flex items-center justify-end gap-3">
               <div className="hidden items-center gap-2 md:flex">
                 <label className="text-sm text-gray-600 dark:text-gray-300">Radius</label>
                 <input
