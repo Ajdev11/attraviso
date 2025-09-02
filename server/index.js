@@ -3,6 +3,12 @@ const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const sharp = require('sharp');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const dns = require('dns').promises;
+const net = require('net');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,19 +33,32 @@ if (allowedOriginsEnv) {
 }
 
 app.use(cors(corsOptions));
+app.use(helmet());
+app.use(compression());
+app.use(morgan('combined'));
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
+// Rate limit the image proxy to mitigate abuse
+const imageLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: parseInt(process.env.IMAGE_RATE_LIMIT || '120', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/image', imageLimiter);
+
 // Utility to build Overpass QL query
 function buildOverpassQuery(latitude, longitude, radiusMeters) {
-  const r = Math.max(100, Math.min(Number(radiusMeters) || 2000, 50000));
+  const r = Math.max(100, Math.min(Number(radiusMeters) || 2000, 200000));
+  const timeoutSec = r > 50000 ? 60 : 25;
   const lat = Number(latitude);
   const lon = Number(longitude);
   return `
-    [out:json][timeout:25];
+    [out:json][timeout:${timeoutSec}];
     (
       node["tourism"](around:${r},${lat},${lon});
       way["tourism"](around:${r},${lat},${lon});
@@ -63,7 +82,7 @@ async function fetchFromOverpass(query) {
     try {
       const response = await axios.post(url, query, {
         headers: { 'Content-Type': 'text/plain' },
-        timeout: 25000,
+        timeout: 60000,
       });
       return response.data;
     } catch (error) {
@@ -298,38 +317,117 @@ app.get('/api/attractions', async (req, res) => {
 });
 
 // Image proxy to avoid hotlink restrictions and mixed header issues
+// --- Image proxy with SSRF protections ---
+function getAllowedImageHosts() {
+  const env = (process.env.ALLOWED_IMAGE_HOSTS || '').trim();
+  if (!env) return null; // no allowlist by default
+  if (env === '*') return '*';
+  return env.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
+function isPrivateIpv4(ip) {
+  const parts = ip.split('.').map((s) => parseInt(s, 10));
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return false;
+  const [a, b] = parts;
+  if (a === 10) return true;
+  if (a === 127) return true; // loopback
+  if (a === 0) return true; // "this network"
+  if (a === 169 && b === 254) return true; // link-local
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a >= 224) return true; // multicast/reserved/broadcast
+  return false;
+}
+
+function isPrivateIpv6(ip) {
+  const lower = ip.toLowerCase();
+  return lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80:');
+}
+
+async function resolvesToPublicIp(hostname) {
+  try {
+    const addrs = await dns.lookup(hostname, { all: true });
+    for (const a of addrs) {
+      if (a.family === 4 && isPrivateIpv4(a.address)) return false;
+      if (a.family === 6 && isPrivateIpv6(a.address)) return false;
+    }
+    return true;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function isHostAllowedByEnv(hostname) {
+  const allowlist = getAllowedImageHosts();
+  if (!allowlist) return true; // not enforced
+  if (allowlist === '*') return true;
+  const host = String(hostname || '').toLowerCase();
+  return allowlist.includes(host);
+}
+
+async function fetchImageFollowingRedirects(startUrl, headers, maxRedirects = 2) {
+  let current = new URL(startUrl);
+  for (let i = 0; i <= maxRedirects; i += 1) {
+    // Validate host on each hop
+    if (!['http:', 'https:'].includes(current.protocol)) throw new Error('Invalid protocol');
+    if (!isHostAllowedByEnv(current.hostname)) throw new Error('Blocked host');
+    if (!(await resolvesToPublicIp(current.hostname))) throw new Error('Blocked IP');
+
+    const resp = await axios.get(current.toString(), {
+      responseType: 'arraybuffer',
+      timeout: 15000,
+      maxRedirects: 0,
+      headers,
+      validateStatus: (s) => (s >= 200 && s < 400),
+      maxContentLength: 8 * 1024 * 1024,
+      maxBodyLength: 8 * 1024 * 1024,
+    });
+
+    if (resp.status >= 300 && resp.status < 400) {
+      const location = resp.headers.location;
+      if (!location) throw new Error('Redirect without location');
+      current = new URL(location, current);
+      continue;
+    }
+    return resp;
+  }
+  throw new Error('Too many redirects');
+}
+
 app.get('/api/image', async (req, res) => {
   const { url, w, q } = req.query;
   try {
     if (!url) return res.status(400).send('Missing url');
-    const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol)) return res.status(400).send('Invalid protocol');
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'AttravisoImageProxy/1.0',
-        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-        Referer: parsed.origin,
-      },
-      validateStatus: (s) => s < 400,
-    });
+    const initial = new URL(url);
+    if (!['http:', 'https:'].includes(initial.protocol)) return res.status(400).send('Invalid protocol');
+    if (!isHostAllowedByEnv(initial.hostname)) return res.status(403).send('Host not allowed');
+    if (!(await resolvesToPublicIp(initial.hostname))) return res.status(403).send('Blocked IP');
+
+    const headers = {
+      'User-Agent': 'AttravisoImageProxy/1.0',
+      Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      Referer: initial.origin,
+    };
+
+    const response = await fetchImageFollowingRedirects(initial.toString(), headers);
+    const contentType = response.headers['content-type'] || '';
+    if (!contentType.startsWith('image/')) return res.status(415).send('Unsupported content-type');
+
     const input = Buffer.from(response.data);
     const width = Math.max(1, Math.min(parseInt(w || '0', 10) || 0, 2000)) || null;
     const quality = Math.max(1, Math.min(parseInt(q || '75', 10), 100));
+
+    res.set('Cache-Control', 'public, max-age=86400');
     if (width) {
       const webp = await sharp(input).resize({ width, withoutEnlargement: true }).webp({ quality }).toBuffer();
       res.set('Content-Type', 'image/webp');
-      res.set('Cache-Control', 'public, max-age=86400');
-      res.send(webp);
-    } else {
-      const contentType = response.headers['content-type'] || 'image/jpeg';
-      res.set('Content-Type', contentType);
-      res.set('Cache-Control', 'public, max-age=86400');
-      res.send(input);
+      return res.send(webp);
     }
-  } catch (e) {
-    res.status(502).send('Failed to fetch image');
+    res.set('Content-Type', contentType);
+    return res.send(input);
+  } catch (_e) {
+    return res.status(502).send('Failed to fetch image');
   }
 });
 

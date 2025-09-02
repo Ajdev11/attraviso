@@ -58,12 +58,21 @@ function App() {
     );
   }, []);
 
+  const fetchControllerRef = React.useRef(null);
+
   const fetchAttractions = React.useCallback(async (lat, lon, r) => {
+    // Abort any in-flight request
+    if (fetchControllerRef.current) {
+      try { fetchControllerRef.current.abort(); } catch (_) {}
+    }
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ lat: String(lat), lon: String(lon), radius: String(r), enrich: '1' });
-      const res = await fetch(`${API_BASE}/api/attractions?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/attractions?${params.toString()}`, { signal: controller.signal });
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok) {
         const text = await res.text().catch(() => '');
@@ -89,9 +98,11 @@ function App() {
       withDistance.sort((a, b) => (a.distanceMeters || Infinity) - (b.distanceMeters || Infinity));
       setItems(withDistance);
     } catch (e) {
+      if (e?.name === 'AbortError') return; // ignore aborted request
       setError(e.message);
     } finally {
       setLoading(false);
+      fetchControllerRef.current = null;
     }
   }, [API_BASE]);
 
@@ -99,6 +110,11 @@ function App() {
     if (coords) {
       fetchAttractions(coords.lat, coords.lon, radius);
     }
+    return () => {
+      if (fetchControllerRef.current) {
+        try { fetchControllerRef.current.abort(); } catch (_) {}
+      }
+    };
   }, [coords, radius, fetchAttractions]);
 
   const locateMe = React.useCallback(() => {
@@ -156,7 +172,7 @@ function App() {
                 <input
                   type="range"
                   min={1000}
-                  max={20000}
+                  max={200000}
                   step={1000}
                   value={radius}
                   onChange={(e) => setRadius(Number(e.target.value))}
@@ -242,6 +258,10 @@ function App() {
                   <option value={5000}>5 km</option>
                   <option value={10000}>10 km</option>
                   <option value={20000}>20 km</option>
+                  <option value={50000}>50 km</option>
+                  <option value={100000}>100 km</option>
+                  <option value={150000}>150 km</option>
+                  <option value={200000}>200 km</option>
                 </select>
               </div>
             </div>
