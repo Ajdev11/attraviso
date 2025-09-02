@@ -3,7 +3,7 @@ import AttractionsList from './components/AttractionsList';
 import MapView from './components/MapView';
 
 function App() {
-  const API_BASE = process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : '';
+  const API_BASE = '';
   const [coords, setCoords] = React.useState(null);
   const [permissionError, setPermissionError] = React.useState(null);
   const [radius, setRadius] = React.useState(2000);

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export default function CardImage({ src, alt, fallbackSrc }) {
-  const apiBase = React.useMemo(() => (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : ''), []);
+  const apiBase = '';
   const baseSrc = React.useMemo(() => (src?.startsWith('/') ? `${apiBase}${src}` : src), [apiBase, src]);
   const [loaded, setLoaded] = React.useState(false);
   const [useFallback, setUseFallback] = React.useState(false);
