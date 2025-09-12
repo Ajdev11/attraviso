@@ -11,7 +11,7 @@ export default function CardImage({ src, alt, fallbackSrc }) {
   const mainSrc = `${effectiveSrc}${effectiveSrc?.includes('?') ? '&' : '?'}w=640&q=78`;
 
   return (
-    <div className="relative aspect-[5/3] w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-800">
+    <div className="relative aspect-[5/3] w-full overflow-hidden rounded-lg bg-gray-100 p-2 sm:p-3 dark:bg-slate-800">
       <img
         src={tinySrc}
         alt=""
