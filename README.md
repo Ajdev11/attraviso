@@ -1,88 +1,84 @@
 # Attraviso
 
-Attraviso is a [brief one‑liner about your product], built for [primary audience] to [key outcome].
+Discover nearby attractions and historic sites using OpenStreetMap data, with a fast React UI and an Express API.
 
-## Vision
-Describe the problem you’re solving and why it matters in 2–3 sentences. Example: “Attraviso helps [audience] [do X] by [how it works]. Our goal is to make [benefit] simple and fast.”
-
-## Core features (MVP)
-- Nearby attractions by your location (OpenStreetMap Overpass API)
-- Adjustable search radius (1–20 km) and manual refresh
-- Clean Tailwind UI; responsive grid list
-
-## Tech stack
-- React 19 (Create React App 5)
-- Express backend proxy for Overpass API
-- Tailwind CSS 4 (CLI in watch mode)
-- Leaflet map with React bindings
-- ESLint via `react-app` config
-
-## Getting started
+## Quick start
 ```bash
 npm install
 npm start
 ```
 
-Build for production:
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:5000
+
+Production build:
 ```bash
 npm run build
 ```
+
+## Scripts
+- `npm start`: Runs Tailwind CLI watcher, backend (5000), and CRA dev server (3001)
+- `npm run build`: Builds Tailwind CSS then creates a production build
+- `npm run server`: Start backend only
+- `npm run server:watch`: Backend with nodemon
+- `npm run tw:build` / `npm run tw:watch`: Tailwind CSS compile/watch
 
 ## Project structure
 ```
 attraviso/
   public/
-    index.html        # Title set to "Attraviso"
-    favicon.svg       # 'A' monogram favicon
+    index.html         # SEO meta, canonical, OG/Twitter, JSON-LD
+    robots.txt         # Includes: Sitemap: /sitemap.xml
+    sitemap.xml        # Basic sitemap (homepage)
+    site.webmanifest   # PWA manifest
+    favicon.svg, logo192.png, logo512.png
   src/
-    assets/           # Images, icons, fonts
-    components/       # Reusable UI components
-    App.js            # Root app component
-    index.js          # Entry point
+    assets/
+    components/
+    styles/tailwind.css
+    index.css
+    index.js
+    App.js
   server/
-    index.js          # Express API: /api/health, /api/attractions
+    index.js           # /api/health, /api/attractions, /api/image
+  tailwind.config.cjs  # Tailwind v4 config (CLI)
+  postcss.config.js    # CRA uses @tailwindcss/postcss
 ```
 
-## Branding
-- Title: "Attraviso" (set in `public/index.html`).
-- Favicon: `public/favicon.svg` (simple 'A' mark). Replace with your brand mark if needed.
+## Backend API
+- `GET /api/health` → `{ ok: true }`
+- `GET /api/attractions?lat=…&lon=…&radius=…&enrich=1`
+  - Returns nearby OSM attractions (nodes/ways/relations)
+  - `radius` meters (min 100, max 200000)
+  - `enrich=1` attempts to attach an `imageUrl` (Wikidata/Wikipedia/website OG)
+- `GET /api/image?url=…&w=…&q=…`
+  - Secure image proxy with SSRF protections; optional resize to WebP
+  - Env allowlist: `ALLOWED_IMAGE_HOSTS` (comma-separated or `*`)
 
-## Roadmap
-- v0.1: [Define MVP scope]
-- v0.2: [Next features or integrations]
+## SEO & PWA
+- `public/index.html` includes: title/description, canonical, Open Graph, Twitter, and JSON‑LD.
+- `public/robots.txt` references `Sitemap: /sitemap.xml`.
+- `public/site.webmanifest` is linked from `index.html`.
+- To set your production domain:
+  1) Add `"homepage": "https://your-domain"` to `package.json`
+  2) Update `<loc>` in `public/sitemap.xml`
 
-## Contributing / Workflow
-- Create feature branches off `main`.
-- Keep components small, reusable, and colocate styles/assets in `src/components` and `src/assets`.
+## Environment variables (backend)
+- `PORT` (default 5000)
+- `CORS_ORIGINS` (comma-separated) to restrict allowed origins
+- `IMAGE_RATE_LIMIT` (default 120/min for `/api/image`)
+- `ALLOWED_IMAGE_HOSTS` (comma-separated domain allowlist for `/api/image`)
 
-## Development
+## Tech stack
+- React 19 (Create React App 5)
+- Express 5
+- Tailwind CSS 4 (CLI) + `@tailwindcss/postcss`
+- Leaflet + React Leaflet
 
-### Prerequisites
-- Node 18+
+## Troubleshooting
+- Port in use: CRA runs on 3001 (set via `cross-env PORT=3001`). Change in `package.json` if needed.
+- Tailwind/PostCSS error: This project uses `postcss.config.js` with `@tailwindcss/postcss` and `tailwind.config.cjs`.
+- Geolocation on mobile requires HTTPS (or `localhost`). For local phone testing, use HTTPS dev or deploy behind HTTPS.
 
-### Run
-```
-npm install
-npm start
-```
-This launches:
-- Tailwind CLI in watch mode
-- Express backend on http://localhost:5000
-- React dev server on http://localhost:3000 (proxied to backend via `proxy`)
-
-### Map & Geolocation tips
-- Geolocation requires HTTPS on real devices (or `localhost`). To test on phone:
-  - On Windows PowerShell: `set HTTPS=true; npm start`
-  - Ensure the API is reachable from your phone (same LAN) or deploy both behind one HTTPS domain.
-- Toggle between List/Map in the header. Dark mode is supported.
-
-### Environment
-- Optional: set `CORS_ORIGINS` env var (comma-separated) to restrict origins for the backend.
-
-### Build
-```
-npm run build
-```
-
-
-
+## License
+MIT
