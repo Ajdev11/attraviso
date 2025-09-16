@@ -53,21 +53,34 @@ app.use('/api/image', imageLimiter);
 
 // Utility to build Overpass QL query
 function buildOverpassQuery(latitude, longitude, radiusMeters) {
-  const r = Math.max(100, Math.min(Number(radiusMeters) || 2000, 200000));
-  const timeoutSec = r > 50000 ? 60 : 25;
+  const requested = Number(radiusMeters) || 2000;
+  const r = Math.max(100, Math.min(requested, 200000));
   const lat = Number(latitude);
   const lon = Number(longitude);
+
+  // Scale Overpass timeout based on radius
+  let timeoutSec = 25;
+  if (r > 35000) timeoutSec = 60;
+  if (r > 70000) timeoutSec = 120;
+  if (r > 150000) timeoutSec = 180;
+
+  // Limit number of returned elements to keep responses manageable
+  const limit = r > 70000 ? 1000 : 2000;
+
+  // Narrow tourism features to attraction-like values to avoid hotels, campsites, etc.
+  const tourismValues = '^(attraction|museum|gallery|artwork|theme_park|zoo|viewpoint|aquarium)$';
+
   return `
     [out:json][timeout:${timeoutSec}];
     (
-      node["tourism"](around:${r},${lat},${lon});
-      way["tourism"](around:${r},${lat},${lon});
-      relation["tourism"](around:${r},${lat},${lon});
+      node["tourism"~"${tourismValues}"](around:${r},${lat},${lon});
+      way["tourism"~"${tourismValues}"](around:${r},${lat},${lon});
+      relation["tourism"~"${tourismValues}"](around:${r},${lat},${lon});
       node["historic"](around:${r},${lat},${lon});
       way["historic"](around:${r},${lat},${lon});
       relation["historic"](around:${r},${lat},${lon});
     );
-    out center;
+    out center ${limit};
   `;
 }
 
@@ -81,8 +94,11 @@ async function fetchFromOverpass(query) {
   for (const url of endpoints) {
     try {
       const response = await axios.post(url, query, {
-        headers: { 'Content-Type': 'text/plain' },
-        timeout: 60000,
+        headers: {
+          'Content-Type': 'text/plain',
+          'User-Agent': 'Attraviso/1.0 (+https://attraviso.app)'
+        },
+        timeout: parseInt(process.env.OVERPASS_HTTP_TIMEOUT_MS || '180000', 10),
       });
       return response.data;
     } catch (error) {
