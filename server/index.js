@@ -51,6 +51,26 @@ const imageLimiter = rateLimit({
 });
 app.use('/api/image', imageLimiter);
 
+// --- Utilities ---
+function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(value, max));
+}
+
+function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // m
+  const toRad = (v) => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 // Utility to build Overpass QL query
 function buildOverpassQuery(latitude, longitude, radiusMeters) {
   const requested = Number(radiusMeters) || 2000;
@@ -444,6 +464,126 @@ app.get('/api/image', async (req, res) => {
     return res.send(input);
   } catch (_e) {
     return res.status(502).send('Failed to fetch image');
+  }
+});
+
+// --- Jobs API ---
+async function reverseGeocode(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`;
+    const { data } = await axios.get(url, { timeout: 10000, headers: { 'User-Agent': 'Attraviso/1.0 (+reverse-geocode)' } });
+    const a = data?.address || {};
+    const city = a.city || a.town || a.village || a.county || null;
+    const state = a.state || a.region || null;
+    const country = a.country || null;
+    const parts = [city, state, country].filter(Boolean);
+    return parts.join(', ');
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function fetchJobsFromAdzuna(lat, lon, distanceKm, query) {
+  const appId = process.env.ADZUNA_APP_ID;
+  const appKey = process.env.ADZUNA_APP_KEY;
+  if (!appId || !appKey) return null;
+  const country = (process.env.ADZUNA_COUNTRY || 'gb').toLowerCase();
+  const url = `https://api.adzuna.com/v1/api/jobs/${country}/search/1`;
+  const params = {
+    app_id: appId,
+    app_key: appKey,
+    results_per_page: 50,
+    where: `${lat},${lon}`,
+    distance: clamp(Math.round(distanceKm), 1, 200),
+    sort_by: 'distance',
+    content_type: 'application/json',
+    what: query || undefined,
+    latlong: 1,
+  };
+  try {
+    const { data } = await axios.get(url, { params, timeout: 15000, headers: { 'User-Agent': 'Attraviso/1.0 (+jobs-adzuna)' } });
+    const list = Array.isArray(data?.results) ? data.results : [];
+    return list.map((j) => {
+      const latitude = toNumber(j.latitude, null);
+      const longitude = toNumber(j.longitude, null);
+      const item = {
+        id: `adzuna/${j.id}`,
+        title: j.title || 'Job',
+        company: j.company?.display_name || null,
+        location: j.location?.display_name || null,
+        url: j.redirect_url || j.adref || null,
+        latitude,
+        longitude,
+        description: j.description || null,
+        salaryMin: toNumber(j.salary_min, null),
+        salaryMax: toNumber(j.salary_max, null),
+        created: j.created || null,
+        source: 'Adzuna',
+      };
+      if (latitude && longitude) {
+        item.distanceMeters = Math.round(haversineDistanceMeters(lat, lon, latitude, longitude));
+      }
+      return item;
+    });
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function fetchJobsFromMuse(lat, lon, query) {
+  // Reverse geocode to a human location string
+  const location = await reverseGeocode(lat, lon);
+  const url = 'https://www.themuse.com/api/public/jobs';
+  const params = { page: 1, location: location || undefined, category: undefined }; // category optional
+  try {
+    const { data } = await axios.get(url, { params, timeout: 15000, headers: { 'User-Agent': 'Attraviso/1.0 (+jobs-muse)' } });
+    const list = Array.isArray(data?.results) ? data.results : [];
+    return list.map((j) => ({
+      id: `muse/${j.id}`,
+      title: j.name || 'Job',
+      company: j.company?.name || null,
+      location: (j.locations && j.locations[0]?.name) || location || null,
+      url: j.refs?.landing_page || null,
+      latitude: null,
+      longitude: null,
+      description: null,
+      salaryMin: null,
+      salaryMax: null,
+      created: j.publication_date || null,
+      source: 'The Muse',
+    }));
+  } catch (_e) {
+    return [];
+  }
+}
+
+app.get('/api/jobs', async (req, res) => {
+  const lat = toNumber(req.query.lat);
+  const lon = toNumber(req.query.lon);
+  const radiusMeters = toNumber(req.query.radius, 5000);
+  const q = (req.query.q || '').toString().trim() || undefined;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return res.status(400).json({ error: 'Missing required query params: lat, lon' });
+  }
+  const distanceKm = clamp(Math.round((radiusMeters || 1000) / 1000), 1, 200);
+  try {
+    let items = await fetchJobsFromAdzuna(lat, lon, distanceKm, q);
+    if (!items || items.length === 0) {
+      const fallback = await fetchJobsFromMuse(lat, lon, q);
+      items = fallback;
+    }
+    // Sort by distance when present, otherwise by recency
+    items.sort((a, b) => {
+      const da = a.distanceMeters ?? Infinity;
+      const db = b.distanceMeters ?? Infinity;
+      if (da !== db) return da - db;
+      const ta = a.created ? Date.parse(a.created) || 0 : 0;
+      const tb = b.created ? Date.parse(b.created) || 0 : 0;
+      return tb - ta;
+    });
+    res.json({ count: items.length, items });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch jobs', details: e.message });
   }
 });
 
