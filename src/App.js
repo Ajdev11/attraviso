@@ -1,6 +1,7 @@
 import React from 'react';
 import AttractionsList from './components/AttractionsList';
 import MapView from './components/MapView';
+import JobsList from './components/JobsList';
 
 function App() {
   const API_BASE = '';
@@ -12,13 +13,19 @@ function App() {
   const [error, setError] = React.useState(null);
   const [search, setSearch] = React.useState('');
   const [typeFilter, setTypeFilter] = React.useState('all'); // all | tourism | historic | other
+  const [activeTab, setActiveTab] = React.useState('attractions'); // attractions | jobs
+  // Jobs state
+  const [jobs, setJobs] = React.useState([]);
+  const [jobsLoading, setJobsLoading] = React.useState(false);
+  const [jobsError, setJobsError] = React.useState(null);
+  const [jobQuery, setJobQuery] = React.useState('');
   const [darkMode, setDarkMode] = React.useState(() => {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') return true;
     if (saved === 'light') return false;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-  const [view, setView] = React.useState('list'); // list | map
+  const [view, setView] = React.useState('list'); // list | map (for attractions)
   const [mapBounds, setMapBounds] = React.useState(null);
   const [filterToMap, setFilterToMap] = React.useState(false);
 
@@ -59,6 +66,7 @@ function App() {
   }, []);
 
   const fetchControllerRef = React.useRef(null);
+  const jobsControllerRef = React.useRef(null);
 
   const fetchAttractions = React.useCallback(async (lat, lon, r) => {
     // Abort any in-flight request
@@ -106,16 +114,48 @@ function App() {
     }
   }, [API_BASE]);
 
+  const fetchJobs = React.useCallback(async (lat, lon, r, q) => {
+    if (jobsControllerRef.current) {
+      try { jobsControllerRef.current.abort(); } catch (_) {}
+    }
+    const controller = new AbortController();
+    jobsControllerRef.current = controller;
+    setJobsLoading(true);
+    setJobsError(null);
+    try {
+      const params = new URLSearchParams({ lat: String(lat), lon: String(lon), radius: String(r) });
+      if (q) params.set('q', q);
+      const res = await fetch(`${API_BASE}/api/jobs?${params.toString()}`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`Jobs request failed (${res.status})`);
+      const data = await res.json();
+      const list = Array.isArray(data.items) ? data.items : [];
+      setJobs(list);
+    } catch (e) {
+      if (e?.name === 'AbortError') return;
+      setJobsError(e.message);
+    } finally {
+      setJobsLoading(false);
+      jobsControllerRef.current = null;
+    }
+  }, [API_BASE]);
+
   React.useEffect(() => {
     if (coords) {
-      fetchAttractions(coords.lat, coords.lon, radius);
+      if (activeTab === 'attractions') {
+        fetchAttractions(coords.lat, coords.lon, radius);
+      } else {
+        fetchJobs(coords.lat, coords.lon, radius, jobQuery);
+      }
     }
     return () => {
       if (fetchControllerRef.current) {
         try { fetchControllerRef.current.abort(); } catch (_) {}
       }
+      if (jobsControllerRef.current) {
+        try { jobsControllerRef.current.abort(); } catch (_) {}
+      }
     };
-  }, [coords, radius, fetchAttractions]);
+  }, [coords, radius, activeTab, jobQuery, fetchAttractions, fetchJobs]);
 
   const locateMe = React.useCallback(() => {
     if (!('geolocation' in navigator)) {
@@ -150,6 +190,13 @@ function App() {
     return out;
   }, [items, search, typeFilter, filterToMap, mapBounds]);
 
+  const filteredJobs = React.useMemo(() => {
+    const q = jobQuery.trim().toLowerCase();
+    let out = jobs;
+    if (q) out = out.filter((j) => (j.title || '').toLowerCase().includes(q) || (j.company || '').toLowerCase().includes(q));
+    return out;
+  }, [jobs, jobQuery]);
+
   const themeRootStyle = darkMode
     ? { backgroundColor: '#0b1220', color: '#f8fafc' }
     : { backgroundColor: '#fafafa', color: '#111827' };
@@ -167,6 +214,22 @@ function App() {
               <h1 className="text-lg font-semibold tracking-tight">Attraviso</h1>
             </div>
             <div className="ml-auto flex items-center justify-end gap-3">
+              <div className={`inline-flex overflow-hidden rounded-md border ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
+                <button
+                  className={`px-3 py-1.5 text-sm ${activeTab==='attractions' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
+                  onClick={() => setActiveTab('attractions')}
+                  title="Attractions"
+                >
+                  Attractions
+                </button>
+                <button
+                  className={`border-l px-3 py-1.5 text-sm ${darkMode ? 'border-gray-700' : 'border-gray-300'} ${activeTab==='jobs' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
+                  onClick={() => setActiveTab('jobs')}
+                  title="Jobs"
+                >
+                  Jobs
+                </button>
+              </div>
               <div className="hidden items-center gap-2 md:flex">
                 <label className="text-sm text-gray-600 dark:text-gray-300">Radius</label>
                 <input
@@ -181,22 +244,24 @@ function App() {
                 <span className="w-10 text-right text-sm text-gray-700 dark:text-gray-300">{Math.round(radius/1000)}k</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className={`inline-flex overflow-hidden rounded-md border ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
-                  <button
-                    className={`px-3 py-1.5 text-sm ${view==='list' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
-                    onClick={() => setView('list')}
-                    title="List view"
-                  >
-                    List
-                  </button>
-                  <button
-                    className={`border-l px-3 py-1.5 text-sm ${darkMode ? 'border-gray-700' : 'border-gray-300'} ${view==='map' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
-                    onClick={() => setView('map')}
-                    title="Map view"
-                  >
-                    Map
-                  </button>
-                </div>
+                {activeTab === 'attractions' && (
+                  <div className={`inline-flex overflow-hidden rounded-md border ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
+                    <button
+                      className={`px-3 py-1.5 text-sm ${view==='list' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
+                      onClick={() => setView('list')}
+                      title="List view"
+                    >
+                      List
+                    </button>
+                    <button
+                      className={`border-l px-3 py-1.5 text-sm ${darkMode ? 'border-gray-700' : 'border-gray-300'} ${view==='map' ? (darkMode ? 'bg-gray-800 font-medium' : 'bg-gray-100 font-medium') : (darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50')}`}
+                      onClick={() => setView('map')}
+                      title="Map view"
+                    >
+                      Map
+                    </button>
+                  </div>
+                )}
                 {view === 'map' && (
                   <label className="ml-1 hidden cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-gray-700 md:flex dark:text-gray-300">
                     <input type="checkbox" className="accent-blue-600" checked={filterToMap} onChange={(e) => setFilterToMap(e.target.checked)} />
@@ -210,10 +275,18 @@ function App() {
                 >
                   📍 Locate
                 </button>
-                {coords && (
+                {coords && activeTab === 'attractions' && (
                   <button
                     className={primaryButtonClasses}
                     onClick={() => fetchAttractions(coords.lat, coords.lon, radius)}
+                  >
+                    ↻ Refresh
+                  </button>
+                )}
+                {coords && activeTab === 'jobs' && (
+                  <button
+                    className={primaryButtonClasses}
+                    onClick={() => fetchJobs(coords.lat, coords.lon, radius, jobQuery)}
                   >
                     ↻ Refresh
                   </button>
@@ -229,23 +302,35 @@ function App() {
             </div>
           </div>
           <div className="mt-3 flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
-            <input
-              type="text"
-              placeholder="Search attractions…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
-            />
+            {activeTab === 'attractions' ? (
+              <input
+                type="text"
+                placeholder="Search attractions…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder="Search job titles or companies…"
+                value={jobQuery}
+                onChange={(e) => setJobQuery(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
+              />
+            )}
             <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-              {['all','tourism','historic','other'].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTypeFilter(t)}
-                  className={`rounded-full px-3 py-1 text-sm ${typeFilter===t ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
-                >
-                  {t[0].toUpperCase() + t.slice(1)}
-                </button>
-              ))}
+              {activeTab === 'attractions' && (
+                ['all','tourism','historic','other'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTypeFilter(t)}
+                    className={`rounded-full px-3 py-1 text-sm ${typeFilter===t ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+                  >
+                    {t[0].toUpperCase() + t.slice(1)}
+                  </button>
+                ))
+              )}
               <div className="flex items-center gap-2 md:hidden">
                 <label className="text-sm text-gray-600 dark:text-gray-300">Radius</label>
                 <select
@@ -287,7 +372,9 @@ function App() {
           </div>
         )}
 
-        {view === 'list' ? (
+        {activeTab === 'jobs' ? (
+          <JobsList items={filteredJobs} isLoading={jobsLoading} error={jobsError} darkMode={darkMode} />
+        ) : view === 'list' ? (
           <AttractionsList darkMode={darkMode} items={filteredItems} isLoading={loading} error={error} />
         ) : (
           <MapView center={coords} items={filteredItems} radius={radius} onBoundsChange={(b) => setMapBounds(b)} />

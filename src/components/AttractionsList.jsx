@@ -48,7 +48,7 @@ export default function AttractionsList({ items, isLoading, error, darkMode }) {
   const badgeStyle = darkMode ? { backgroundColor: '#0f172a', color: '#e2e8f0' } : undefined;
 
   return (
-    <ul className="grid grid-cols-2" style={{ columnGap: '3rem', rowGap: '2.5rem' }}>
+    <ul className="grid grid-cols-1 md:grid-cols-2" style={{ columnGap: '2rem', rowGap: '2rem' }}>
       {items.map((item) => (
         <li key={item.id} className="overflow-hidden rounded-lg border shadow-sm transition hover:shadow-md" style={cardStyle}>
           {(() => {

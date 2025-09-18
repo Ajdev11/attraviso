@@ -48,7 +48,7 @@ export default function MapView({ center, items, radius, onBoundsChange }) {
   const [viewState, setViewState] = React.useState({ bounds: null, zoom: 13 });
 
   return (
-    <div className="h-[70vh] w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+    <div className="h-[70vh] w-full overflow-hidden rounded-lg border border-gray-200 shadow-sm dark:border-gray-800">
       <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
