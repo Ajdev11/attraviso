@@ -382,7 +382,7 @@ function App() {
       </main>
 
       <footer className="mx-auto max-w-6xl px-6 sm:px-8 md:px-10 py-8 text-center text-xs text-gray-500 dark:text-gray-400">
-        Data from OpenStreetMap (Overpass API)
+        © {new Date().getFullYear()} Attraviso · Data from OpenStreetMap (Overpass API)
       </footer>
     </div>
   );
